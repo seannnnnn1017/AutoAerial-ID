@@ -1,114 +1,89 @@
 from ultralytics import YOLO
 import cv2
-view=True
-model = YOLO("yolov10x.pt")  
-# 載入影片
+
+view = True
+model = YOLO("yolov10x.pt")  # 載入 YOLO 模型
 input_video_path = "images/752750716.004314.mp4"  # 影片路徑
+output_image_path = "output/result_no_person.jpg"  # 輸出影像路徑
 cap = cv2.VideoCapture(input_video_path)
 
-main_frame_replace=[]
-# 找一張有人的照片
+main_frame_replace = []
+replace_done = False  # 追蹤是否完成替換
+
+# 找一張有人的影格，並儲存人的位置
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
         break
-    
-    # 使用 YOLO 模型進行物件偵測
+
+    # 使用 YOLO 偵測物件
     results = model(frame)
-    
-    # 複製影格以進行標註
-    annotated_frame = frame.copy()
     person_count = 0
-    # 只保留標註為 "person" 的偵測結果
+    height, width, _ = frame.shape  # 取得影像尺寸
+
     for result in results:
-        for box in result.boxes:  # 提取每個偵測框
-            if box.cls == 0:  # 在 COCO 資料集中，"person" 的類別索引通常為 0
+        for box in result.boxes:
+            if box.cls == 0:  # 偵測到 "person"
                 person_count += 1
-                # 取得邊框座標
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
+                
+                # 增加邊界框的範圍
+                margin = 20  # 可調整，單位為像素
+                x1 = max(0, x1 - margin)
+                y1 = max(0, y1 - margin)
+                x2 = min(width, x2 + margin)
+                y2 = min(height, y2 + margin)
+                
                 main_frame_replace.append([x1, y1, x2, y2])
-                main_frame=frame.copy()
-    if person_count > 0:
-        break
-                # 繪製邊框與標註
-                #cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                #cv2.putText(annotated_frame, "Person", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                main_frame = frame.copy()  # 儲存包含人的初始影像
 
-
-    # 顯示處理過的影格
-    #cv2.imshow("YOLO Person Detection", annotated_frame)
-
-    # 按 'q' 鍵退出顯示
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    if person_count > 0:  # 偵測到至少一個人後退出
         break
 
+print(main_frame_replace)  # 確認人物位置座標
 
-print(main_frame_replace) #把人物位置存起來
-for i in main_frame_replace:
-    cv2.rectangle(main_frame, (i[0], i[1]), (i[2], i[3]), (0, 255, 0), 2)
-    cv2.putText(main_frame, "Person", (i[0], i[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-
-replace_count=0
-while cap.isOpened(): #找影片中其他時間段的圖片來取代人物
+# 嘗試用其他影格替換人的位置
+while cap.isOpened() and not replace_done:
     ret, frame = cap.read()
     if not ret:
         break
-    
-    # 使用 YOLO 模型進行物件偵測
+
     results = model(frame)
-    
-    # 複製影格以進行標註
-    annotated_frame = frame.copy()
-    # 初始化所有 main_frame_replace 範圍為藍色框
-    for i in main_frame_replace:
-        if view:
-            cv2.rectangle(annotated_frame, (i[0], i[1]), (i[2], i[3]), (255, 0, 0), 2)
-            cv2.putText(annotated_frame, "Person", (i[0], i[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+    overlap_count = 0
+
     for idx, i in enumerate(main_frame_replace):
         x2_min, y2_min, x2_max, y2_max = map(int, i)
+        overlap = False
+
+        # 檢查每個人的框是否仍然有人
         for result in results:
             for box in result.boxes:
-                if box.cls == 0:  # 偵測到 "person"
+                if box.cls == 0:
                     x1_min, y1_min, x1_max, y1_max = map(int, box.xyxy[0])
-                    
-                    # 檢查是否與 main_frame_replace 中的任一框重疊
-                    overlap = False
-
-                    
-                    # 判斷重疊情況
                     if x1_min < x2_max and x1_max > x2_min and y1_min < y2_max and y1_max > y2_min:
                         overlap = True
-                        if view:
-                            # 重疊情況標記為紅色框
-                            cv2.rectangle(annotated_frame, (x2_min, y2_min), (x2_max, y2_max), (0, 0, 255), 2)
-                            cv2.putText(annotated_frame, "Person", (x2_min, y2_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
                         break
-        
-            # 若無重疊則進行替換
-            if not overlap:
-                main_frame[y2_min:y2_max, x2_min:x2_max] = annotated_frame[y2_min:y2_max, x2_min:x2_max]
-                replace_count += 1
-                if view:
-                    # 綠色框表示成功替換的區域
-                    cv2.rectangle(annotated_frame, (x1_min, y1_min), (x1_max, y1_max), (0, 255, 0), 2)
 
+        # 如果沒有重疊，進行替換
+        if not overlap:
+            main_frame[y2_min:y2_max, x2_min:x2_max] = frame[y2_min:y2_max, x2_min:x2_max]
+        else:
+            overlap_count += 1
 
-    # 顯示影像
+    # 如果沒有重疊的區域，表示替換完成
+    if overlap_count == 0:
+        replace_done = True
+
+    # 可選：視覺化處理過程
     if view:
-        cv2.imshow('Annotated Frame', annotated_frame)
-        cv2.imshow('Replace Frame', main_frame)
-    # 按下 'q' 鍵退出
+        cv2.imshow("Replacing Frame", main_frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
-    if replace_count == len(main_frame_replace):
-        pass
-                # 繪製邊框與標註
-                #cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                #cv2.putText(annotated_frame, "Person", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-
-    # 顯示處理過的影格
-cv2.imshow("END", main_frame)
+# 儲存最終結果並顯示
+cv2.imwrite(output_image_path, main_frame)
+print(f"最終影像已儲存到 {output_image_path}")
+cv2.imshow("Final Result", main_frame)
 cv2.waitKey()
-
+cap.release()
+cv2.destroyAllWindows()

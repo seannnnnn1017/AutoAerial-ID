@@ -108,7 +108,7 @@ while cap.isOpened(): #找影片中其他時間段的圖片來取代人物
 
 
     # 顯示處理過的影格
-    #cv2.imshow("YOLO Person Detection", annotated_frame)
+    cv2.imshow("YOLO Person Detection", annotated_frame)
 
     # 按 'q' 鍵退出顯示
     if cv2.waitKey(1) & 0xFF == ord('q'):
