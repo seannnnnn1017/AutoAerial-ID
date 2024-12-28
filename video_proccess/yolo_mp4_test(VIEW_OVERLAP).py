@@ -3,7 +3,7 @@ import cv2
 view=True
 model = YOLO("yolov10x.pt")  
 # 載入影片
-input_video_path = "images/752750716.004314.mp4"  # 影片路徑
+input_video_path = "images\highway_test.mp4"  # 影片路徑
 cap = cv2.VideoCapture(input_video_path)
 
 main_frame_replace=[]
@@ -22,7 +22,7 @@ while cap.isOpened():
     # 只保留標註為 "person" 的偵測結果
     for result in results:
         for box in result.boxes:  # 提取每個偵測框
-            if box.cls == 0:  # 在 COCO 資料集中，"person" 的類別索引通常為 0
+            if box.cls == 2:  # 在 COCO 資料集中，"person" 的類別索引通常為 0
                 person_count += 1
                 # 取得邊框座標
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
@@ -70,7 +70,7 @@ while cap.isOpened(): #找影片中其他時間段的圖片來取代人物
     # 只保留標註為 "person" 的偵測結果
     for result in results:
         for box in result.boxes:  # 提取每個偵測框
-            if box.cls == 0:  # 偵測到 "person"
+            if box.cls == 2:  # 偵測到 "person"
                 person_count += 1
                 # 取得邊框座標
                 x1_min, y1_min, x1_max, y1_max = map(int, box.xyxy[0])

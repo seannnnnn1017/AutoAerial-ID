@@ -27,16 +27,16 @@ def extract_frames(video_path, interval_seconds=1):
 
 def load_yolo_model():
     # 加載 YOLO 模型（使用預訓練權重）
-    model = YOLO('models/yolov8n.pt')  # 使用較小的 YOLO 模型版本
+    model = YOLO('yolov10x.pt')  # 使用較小的 YOLO 模型版本
     return model
 
 def detect_objects(model, frame):
     # 使用 YOLO 檢測物體
-    results = model(frame, conf=0.5)  # 設定置信度閾值
+    results = model(frame, conf=0.1)  # 設定置信度閾值
     bboxes = []
     for result in results:  # 遍歷每個檢測結果
         for box in result.boxes:  # 獲取檢測框
-            if box.cls == 0:  # 只選擇類別為 "person" 的目標（類別ID為0）
+            if box.cls == 2 or box.cls == 7:  # 只選擇類別為 "person" 的目標（類別ID為0）
                 x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())  # 獲取框的座標
                 bboxes.append((x1, y1, x2, y2))
     return bboxes
@@ -46,7 +46,7 @@ def generate_weight_mask(frame, bboxes):
     # 根據檢測框生成權重遮罩
     mask = np.ones_like(frame, dtype=np.float64)  # 預設所有區域權重為1
     for x1, y1, x2, y2 in bboxes:
-        mask[y1:y2, x1:x2] = 0.1  # 將人物區域的權重設置為較低值
+        mask[y1:y2, x1:x2] = 0.01  # 將人物區域的權重設置為較低值
     return mask
 
 def estimate_background_with_yolo(frames, yolo_model):
@@ -66,7 +66,7 @@ def estimate_background_with_yolo(frames, yolo_model):
     return background
 
 # 測試影片提取
-video_path = "C:/Users/fishd/Desktop/Github/AutoAerial-ID/images/752750716.004314.mp4"
+video_path = "images\highway_test.mp4"
 frames = extract_frames(video_path, interval_seconds=1)
 
 # 加載 YOLO 模型

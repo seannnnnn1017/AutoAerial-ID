@@ -23,7 +23,7 @@ while cap.isOpened():
 
     for result in results:
         for box in result.boxes:
-            if box.cls == 0:  # 偵測到 "person"
+            if box.cls == 2:  # 偵測到 "person"
                 person_count += 1
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 
@@ -58,7 +58,7 @@ while cap.isOpened() and not replace_done:
         # 檢查每個人的框是否仍然有人
         for result in results:
             for box in result.boxes:
-                if box.cls == 0:
+                if box.cls == 2:
                     x1_min, y1_min, x1_max, y1_max = map(int, box.xyxy[0])
                     if x1_min < x2_max and x1_max > x2_min and y1_min < y2_max and y1_max > y2_min:
                         overlap = True
